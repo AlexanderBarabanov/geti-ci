@@ -48,10 +48,6 @@ jobs:
           sudo rm -rf /usr/local/.ghcup || true
           sudo rm -rf /usr/local/julia* || true
           sudo rm -rf /usr/local/share/powershell || true
-          echo "Cleaning package manager caches..."
-          sudo apt-get clean
-          sudo apt-get autoremove -y
-          sudo apt-get autoclean
       - name: Pre-build cleanup
         if: ${{ inputs.type == 'pre-build' || inputs.type == 'all' }}
         shell: bash
