@@ -2,7 +2,7 @@ name: test
 on:
   workflow_dispatch:
     inputs:
-      branch:
+      type:
         description: "Type of cleanup to perform: initial, pre-build or all"
         required: true
         default: "initial"
