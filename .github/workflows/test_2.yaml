@@ -1,0 +1,15 @@
+name: test
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  analysis:
+    name: test2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
