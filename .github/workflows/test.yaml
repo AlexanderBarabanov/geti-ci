@@ -17,9 +17,9 @@ jobs:
       - name: Show paths
         shell: bash
         run: |
-          sudo ls -l /swapfile
+          sudo ls -l /swapfile || true
           echo "----------"
-          sudo ls -l /mnt/swapfile
+          sudo ls -l /mnt/swapfile || true
 
       - name: Show initial resources
         shell: bash
