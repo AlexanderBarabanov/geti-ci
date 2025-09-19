@@ -14,13 +14,6 @@ jobs:
     name: Scorecards analysis
     runs-on: ubuntu-latest
     steps:
-      - name: Show paths
-        shell: bash
-        run: |
-          sudo ls -l /swapfile || true
-          echo "----------"
-          sudo ls -l /mnt/swapfile || true
-
       - name: Show initial resources
         shell: bash
         run: |
@@ -30,15 +23,15 @@ jobs:
           docker system df 2>/dev/null || echo "Docker not available yet"
           echo ""
       - name: System cleanup
-        if: inputs.type == 'initial' || inputs.type == 'all'
+        if: ${{ inputs.type == 'initial' || inputs.type == 'all' }}
         shell: bash
         run: |
           echo "=== Performing System Cleanup ==="
           sudo rm -rf /opt/hostedtoolcache || true
-          if [ -f /swapfile ]; then
-            sudo swapoff -a
-            sudo rm -f /swapfile
-          fi
+          sudo swapoff -a
+          sudo rm -f /swapfile || true
+          sudo rm -f /mnt/swapfile || true
+          
           echo "Removing unnecessary system packages..."
           sudo rm -rf /usr/lib/jvm || true
           sudo rm -rf /usr/share/dotnet || true
@@ -60,7 +53,7 @@ jobs:
           sudo apt-get autoremove -y
           sudo apt-get autoclean
       - name: Pre-build cleanup
-        if: inputs.type == 'pre-build' || inputs.type == 'all'
+        if: ${{ inputs.type == 'pre-build' || inputs.type == 'all' }}
         shell: bash
         run: |
           echo "=== Performing Pre-build Cleanup ==="
