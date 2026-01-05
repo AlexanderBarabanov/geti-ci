@@ -1,0 +1,21 @@
+# This workflow implements quality checks
+
+name: Pre-merge checks
+
+on:
+  pull_request_taget:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden the runner (audit all outbound calls)
+        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        with:
+          egress-policy: audit
