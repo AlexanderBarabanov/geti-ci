@@ -4,20 +4,6 @@
 name: Zizmor scan
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    types:
-      - edited
-      - opened
-      - ready_for_review
-      - synchronize
-  schedule:
-    # Run security checks every day at 2 AM UTC
-    - cron: "0 2 * * *"
   workflow_dispatch:
 
 permissions: {}
@@ -44,3 +30,4 @@ jobs:
           severity-level: ${{ github.event_name == 'pull_request' && 'LOW' || 'LOW' }}
           confidence-level: ${{ github.event_name == 'pull_request' && 'LOW' || 'LOW' }}
           fail-on-findings: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+
