@@ -3,7 +3,7 @@
 name: Pre-merge checks
 
 on:
-  pull_request_taget:
+  pull_request_target:
     branches:
       - main
 
