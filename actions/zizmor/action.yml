@@ -215,6 +215,7 @@ runs:
       with:
         sarif_file: zizmor-report.sarif
         category: zizmor
+        checkout_path: ${{ github.workspace }}
 
     - name: Complete with exit code
       shell: bash
@@ -235,4 +236,5 @@ runs:
         else
           echo "No exit_code"
         fi
+
 
