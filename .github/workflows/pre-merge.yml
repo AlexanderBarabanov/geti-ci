@@ -3,7 +3,7 @@
 name: Pre-merge checks
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
 
@@ -25,3 +25,4 @@ jobs:
           persist-credentials: false
       - name: Run pre-commit check
         uses: ./actions/pre-commit
+
