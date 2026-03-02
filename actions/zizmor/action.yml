@@ -39,7 +39,7 @@ inputs:
     description: "Zizmor version"
     required: false
     # renovate: datasource=github-releases depName=zizmorcore/zizmor
-    default: v1.22.0
+    default: v1.23.0
 
 outputs:
   scan_result:
@@ -237,6 +237,7 @@ runs:
           echo "No exit code set, assuming success"
           exit 0
         fi
+
 
 
 
