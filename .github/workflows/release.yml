@@ -24,8 +24,18 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           target-branch: ${{ github.ref_name }}
+      - name: Debug release-please outputs
+        run: |
+          echo "releases_created: ${{ steps.release.outputs.releases_created }}"
+          echo "release_created: ${{ steps.release.outputs.release_created }}"
+          echo "tag_name: ${{ steps.release.outputs.tag_name }}"
+          echo "upload_url: ${{ steps.release.outputs.upload_url }}"
+          echo "html_url: ${{ steps.release.outputs.html_url }}"
+          echo "pr: ${{ steps.release.outputs.pr }}"
+          echo "prs: ${{ steps.release.outputs.prs }}"
+
       - name: Delete release (keep tag only)
-        if: steps.release.outputs.release_created == 'true'
+        if: steps.release.outputs.releases_created
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
