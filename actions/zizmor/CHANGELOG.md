@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/AlexanderBarabanov/geti-ci/compare/zizmor/v0.1.1...zizmor/v0.1.2) (2026-03-02)
+
+
+### 🔧 Chores
+
+* Update action.yml ([1e79ce5](https://github.com/AlexanderBarabanov/geti-ci/commit/1e79ce566b47dd7ba6b80db096f26937cf98ede8))
+
 ## [0.1.1](https://github.com/AlexanderBarabanov/geti-ci/compare/zizmor/v0.1.0...zizmor/v0.1.1) (2026-03-02)
 
 
