@@ -38,5 +38,5 @@ jobs:
         run: |
           TAG_NAME="${{ steps.release.outputs['actions/zizmor--tag_name'] }}"
           echo "Deleting release: $TAG_NAME"
-          gh release delete "$TAG_NAME" --yes --cleanup-tag=false
+          gh release delete "$TAG_NAME" --yes --cleanup-tag=false --repo ${{ github.repository }}
 
