@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AlexanderBarabanov/geti-ci/compare/zizmor/v0.1.0...zizmor/v0.1.1) (2026-03-02)
+
+
+### 🔧 Chores
+
+* downgrade zizmor ([23fae39](https://github.com/AlexanderBarabanov/geti-ci/commit/23fae394de58ecc94b46a6d1d695c3d13f8bc0a1))
+
 ## 0.1.0 (2026-02-27)
 
 
