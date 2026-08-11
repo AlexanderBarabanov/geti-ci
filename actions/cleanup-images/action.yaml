@@ -42,6 +42,10 @@ inputs:
     description: "Token with packages:write permission used to list and delete package versions"
     required: false
     default: ${{ github.token }}
+  extra-retained-tags:
+    description: "Space-separated additional tags to never delete (e.g. 'develop staging')"
+    required: false
+    default: ""
 
 outputs:
   scanned-packages:
@@ -56,6 +60,12 @@ outputs:
   deleted:
     description: "Number of versions deleted (0 in dry-run mode)"
     value: ${{ steps.cleanup.outputs.deleted }}
+  child-manifests-protected:
+    description: "Number of untagged child manifests of retained images protected from deletion"
+    value: ${{ steps.cleanup.outputs.child_manifests_protected }}
+  candidate-names:
+    description: "Newline-separated list of version digests (sha256:...) that are deletion candidates"
+    value: ${{ steps.cleanup.outputs.candidate_names }}
 
 runs:
   using: composite
@@ -69,6 +79,7 @@ runs:
         PACKAGES: ${{ inputs.packages }}
         MIN_VERSIONS_TO_KEEP: ${{ inputs.min-versions-to-keep }}
         DRY_RUN: ${{ inputs.dry-run == 'false' && 'false' || 'true' }}
+        EXTRA_RETAINED_TAGS: ${{ inputs.extra-retained-tags }}
       run: |
         set -euo pipefail
 
@@ -85,10 +96,21 @@ runs:
           exit 1
         fi
 
+        # Parse extra-retained-tags (space-separated) into a JSON array for jq.
+        read -r -a extra_retained_tags <<< "${EXTRA_RETAINED_TAGS}"
+        if [[ "${#extra_retained_tags[@]}" -gt 0 ]]; then
+          extra_tags_json="$(printf '%s\n' "${extra_retained_tags[@]}" | jq -Rc . | jq -sc .)"
+          echo "Extra retained tags: ${extra_retained_tags[*]}"
+        else
+          extra_tags_json='[]'
+        fi
+
         deleted=0
         candidates=0
         retained_release=0
         scanned_packages=0
+        child_manifests_protected=0
+        candidate_names=()
 
         owner_type="$(gh api "users/${OWNER}" --jq '.type')"
         if [[ "${owner_type}" == "Organization" ]]; then
@@ -152,8 +174,10 @@ runs:
           # they must be protected explicitly or the retained index becomes
           # dangling and unpullable after cleanup.
           mapfile -t retained_digests < <(
-            echo "${versions_json}" | jq -r --arg re "${release_regex}" '.[]
-              | select(any(.tags[]?; test($re; "i") or . == "latest"))
+            echo "${versions_json}" | jq -r \
+              --arg re "${release_regex}" \
+              --argjson extra_tags "${extra_tags_json}" '.[]
+              | select(any(.tags[]?; test($re; "i") or . == "latest" or (. as $t | $extra_tags | index($t) != null)))
               | .name'
           )
 
@@ -180,6 +204,7 @@ runs:
               while read -r child; do
                 [[ -n "${child}" ]] || continue
                 protected_digests+=("${child}")
+                child_manifests_protected=$((child_manifests_protected + 1))
                 child_hex="${child#sha256:}"
                 protected_sig_tags+=("sha256-${child_hex}.sig" "sha256-${child_hex}.att" "sha256-${child_hex}.sbom")
               done < <(printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
@@ -208,21 +233,22 @@ runs:
           # not a manifest referenced by a retained index, and not a cosign
           # signature/attestation of a protected digest. Sorted newest first;
           # the first MIN_VERSIONS_TO_KEEP are kept.
-          # Each line is "<id>\t<comma-separated tags>".
+          # Each line is "<id>\t<digest>\t<comma-separated tags>".
           mapfile -t old_versions < <(
             echo "${versions_json}" | jq -r \
               --argjson keep "${MIN_VERSIONS_TO_KEEP}" \
               --arg re "${release_regex}" \
               --argjson protected_digests "${protected_digests_json}" \
-              --argjson protected_sig_tags "${protected_sig_tags_json}" '
+              --argjson protected_sig_tags "${protected_sig_tags_json}" \
+              --argjson extra_tags "${extra_tags_json}" '
               [.[]
-                | select((any(.tags[]?; test($re; "i") or . == "latest")) | not)
+                | select((any(.tags[]?; test($re; "i") or . == "latest" or (. as $t | $extra_tags | index($t) != null))) | not)
                 | select((.name as $n | $protected_digests | index($n)) | not)
                 | select((any(.tags[]?; . as $t | $protected_sig_tags | index($t))) | not)]
               | sort_by(.created_at | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime)
               | reverse
               | .[$keep:]
-              | .[] | "\(.id)\t\(.tags | join(","))"'
+              | .[] | "\(.id)\t\(.name)\t\(.tags | join(","))"'
           )
 
           echo "Release versions retained for ${package}: ${pkg_retained}"
@@ -230,8 +256,11 @@ runs:
 
           for version_entry in "${old_versions[@]}"; do
             version_id="${version_entry%%$'\t'*}"
-            version_tags="${version_entry#*$'\t'}"
+            rest="${version_entry#*$'\t'}"
+            version_name="${rest%%$'\t'*}"
+            version_tags="${rest#*$'\t'}"
             [[ -n "${version_tags}" ]] || version_tags="<untagged>"
+            candidate_names+=("${version_name}")
             candidates=$((candidates + 1))
             if [[ "${DRY_RUN}" == "true" ]]; then
               echo "[dry-run] Would delete ${package} version id ${version_id} (tags: ${version_tags})"
@@ -250,6 +279,13 @@ runs:
           echo "retained_release=${retained_release}"
           echo "candidates=${candidates}"
           echo "deleted=${deleted}"
+          echo "child_manifests_protected=${child_manifests_protected}"
+          if [[ "${#candidate_names[@]}" -gt 0 ]]; then
+            printf 'candidate_names<<_CANDIDATE_EOF\n%s\n_CANDIDATE_EOF\n' \
+              "$(printf '%s\n' "${candidate_names[@]}")"
+          else
+            printf 'candidate_names=\n'
+          fi
         } >> "${GITHUB_OUTPUT}"
 
         {
@@ -260,7 +296,9 @@ runs:
           echo "- API scope: ${api_scope}"
           echo "- Packages scanned: ${scanned_packages}"
           echo "- Minimum non-release versions kept per package: ${MIN_VERSIONS_TO_KEEP}"
+          echo "- Extra retained tags: ${EXTRA_RETAINED_TAGS:-<none>}"
           echo "- Release versions retained: ${retained_release}"
+          echo "- Child manifests of retained images protected: ${child_manifests_protected}"
           echo "- Old versions matched for deletion: ${candidates}"
           echo "- Versions deleted: ${deleted}"
           echo "- Dry run: ${DRY_RUN}"

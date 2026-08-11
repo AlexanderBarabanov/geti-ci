@@ -111,12 +111,140 @@ jobs:
           fi
           echo "✅ Validation test passed (action failed as expected)"
 
+  # Test 3: Dry-run against real geti-cpu package; verify child manifests of the
+  # develop tag are NOT deletion candidates (guards introduced in PR #108).
+  cleanup-images-child-manifest-guard-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - *harden-runner
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run cleanup dry-run against geti-cpu with extra-retained-tags
+        id: cleanup
+        uses: ./actions/cleanup-images
+        with:
+          packages: geti-cpu
+          min-versions-to-keep: 0
+          dry-run: true
+          extra-retained-tags: develop
+          owner: open-edge-platform
+
+      - name: Verify child-manifests-protected is non-zero
+        shell: bash
+        env:
+          CHILD_MANIFESTS_PROTECTED: ${{ steps.cleanup.outputs.child-manifests-protected }}
+        run: |
+          if [[ -z "${CHILD_MANIFESTS_PROTECTED}" || "${CHILD_MANIFESTS_PROTECTED}" -lt 1 ]]; then
+            echo "Error: expected >=1 child manifest protected, got '${CHILD_MANIFESTS_PROTECTED}'"
+            echo "The 'develop' tag may be missing or the guard is not working."
+            exit 1
+          fi
+          echo "✅ Guard active: ${CHILD_MANIFESTS_PROTECTED} child manifest(s) protected from deletion"
+
+      - name: Independent verification - child manifests are not deletion candidates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: open-edge-platform
+          PACKAGE: geti-cpu
+          EXTRA_TAG: develop
+          CANDIDATE_NAMES: ${{ steps.cleanup.outputs.candidate-names }}
+        run: |
+          set -euo pipefail
+
+          package_url="$(printf '%s' "${PACKAGE}" | jq -sRr @uri)"
+          release_regex='^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$'
+
+          # Fetch all versions of geti-cpu.
+          raw_versions="$(gh api --paginate \
+            "orgs/${OWNER}/packages/container/${package_url}/versions?per_page=100")"
+          versions_json="$(printf '%s\n' "${raw_versions}" | jq -sc '
+            map(if type=="array" then .[] else . end) |
+            map({id, name, tags: (.metadata.container.tags // []), created_at})')"
+
+          # Find retained digests (release/RC/latest + develop).
+          mapfile -t retained_digests < <(
+            echo "${versions_json}" | jq -r \
+              --arg re "${release_regex}" \
+              --arg extra "${EXTRA_TAG}" '.[]
+              | select(any(.tags[]?; test($re; "i") or . == "latest" or . == $extra))
+              | .name'
+          )
+
+          if [[ "${#retained_digests[@]}" -eq 0 ]]; then
+            echo "::warning::No retained images found for ${OWNER}/${PACKAGE}; skipping child manifest check."
+            exit 0
+          fi
+
+          # Obtain a GHCR registry token to resolve manifest children.
+          scope="$(printf 'repository:%s/%s:pull' "${OWNER}" "${PACKAGE}" | jq -sRr @uri)"
+          reg_token="$(curl -fsSL -u "x:${GH_TOKEN}" \
+            "https://ghcr.io/token?service=ghcr.io&scope=${scope}" \
+            | jq -r '.token // .access_token // empty')"
+          if [[ -z "${reg_token}" ]]; then
+            echo "::error::Could not obtain GHCR registry token for ${OWNER}/${PACKAGE}."
+            exit 1
+          fi
+
+          accept='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json'
+
+          # Resolve child manifests referenced by all retained indices.
+          child_digests=()
+          for digest in "${retained_digests[@]}"; do
+            [[ -n "${digest}" ]] || continue
+            manifest="$(curl -fsSL \
+              -H "Authorization: Bearer ${reg_token}" \
+              -H "Accept: ${accept}" \
+              "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${digest}" || true)"
+            while read -r child; do
+              [[ -n "${child}" ]] || continue
+              child_digests+=("${child}")
+            done < <(printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
+          done
+
+          if [[ "${#child_digests[@]}" -eq 0 ]]; then
+            echo "::warning::No child manifests found for retained images (single-arch package?); skipping guard check."
+            exit 0
+          fi
+
+          echo "Child manifests of retained images found: ${#child_digests[@]}"
+
+          # Build the set of candidate digests from the action's output.
+          mapfile -t candidate_digests <<< "${CANDIDATE_NAMES}"
+
+          # Verify no child manifest appears among the action's deletion candidates.
+          failed=0
+          for child in "${child_digests[@]}"; do
+            for candidate in "${candidate_digests[@]}"; do
+              if [[ "${child}" == "${candidate}" ]]; then
+                echo "ERROR: child manifest ${child} is listed as a deletion candidate!"
+                failed=$((failed + 1))
+              fi
+            done
+          done
+
+          if [[ "${failed}" -gt 0 ]]; then
+            echo "❌ Guard check failed: ${failed} child manifest(s) of retained images are deletion candidates"
+            exit 1
+          fi
+
+          echo "✅ Guard verified: none of the ${#child_digests[@]} child manifests of retained images are deletion candidates"
+
   # Summary job - provides single point of success/failure
   cleanup-images-test-summary:
     runs-on: ubuntu-latest
     needs:
       - cleanup-images-dry-run-test
       - cleanup-images-validation-test
+      - cleanup-images-child-manifest-guard-test
     if: always()
     steps:
       - name: Check test results
@@ -124,6 +252,7 @@ jobs:
         env:
           TEST_DRY_RUN_RESULT: ${{ needs.cleanup-images-dry-run-test.result }}
           TEST_VALIDATION_RESULT: ${{ needs.cleanup-images-validation-test.result }}
+          TEST_GUARD_RESULT: ${{ needs.cleanup-images-child-manifest-guard-test.result }}
         run: |
           if [[ "$TEST_DRY_RUN_RESULT" != "success" ]]; then
             echo "❌ Dry-run test failed"
@@ -131,6 +260,10 @@ jobs:
           fi
           if [[ "$TEST_VALIDATION_RESULT" != "success" ]]; then
             echo "❌ Validation test failed"
+            exit 1
+          fi
+          if [[ "$TEST_GUARD_RESULT" != "success" ]]; then
+            echo "❌ Child manifest guard test failed"
             exit 1
           fi
           echo "✅ All Cleanup Images action tests passed successfully!"
