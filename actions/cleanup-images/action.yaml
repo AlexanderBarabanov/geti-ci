@@ -192,12 +192,15 @@ runs:
               | jq -r '.token // .access_token // empty' || true)"
             [[ -n "${reg_token}" ]] || echo "::warning::Failed to obtain GHCR registry token for ${OWNER}/${package}; referenced manifests/referrers will not be protected."
             accept='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json'
+            echo "Retained images and their protected child manifests:"
             for digest in "${retained_digests[@]}"; do
               [[ -n "${digest}" ]] || continue
               protected_digests+=("${digest}")
               # cosign default signature/attestation tags for this digest.
               hex="${digest#sha256:}"
               protected_sig_tags+=("sha256-${hex}.sig" "sha256-${hex}.att" "sha256-${hex}.sbom")
+              digest_tags="$(echo "${versions_json}" | jq -r --arg d "${digest}" '.[] | select(.name==$d) | .tags | join(", ")')"
+              echo "  ${digest} (tags: ${digest_tags:-<none>})"
               [[ -n "${reg_token}" ]] || continue
               manifest="$(curl -fsSL -H "Authorization: Bearer ${reg_token}" -H "Accept: ${accept}" \
                 "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${digest}" || true)"
@@ -207,6 +210,7 @@ runs:
                 child_manifests_protected=$((child_manifests_protected + 1))
                 child_hex="${child#sha256:}"
                 protected_sig_tags+=("sha256-${child_hex}.sig" "sha256-${child_hex}.att" "sha256-${child_hex}.sbom")
+                echo "    -> ${child}"
               done < <(printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
               referrers="$(curl -fsSL -H "Authorization: Bearer ${reg_token}" \
                 -H "Accept: application/vnd.oci.image.index.v1+json" \
@@ -263,9 +267,9 @@ runs:
             candidate_names+=("${version_name}")
             candidates=$((candidates + 1))
             if [[ "${DRY_RUN}" == "true" ]]; then
-              echo "[dry-run] Would delete ${package} version id ${version_id} (tags: ${version_tags})"
+              echo "[dry-run] Would delete ${package} version id ${version_id} digest ${version_name} (tags: ${version_tags})"
             else
-              echo "Deleting ${package} version id ${version_id} (tags: ${version_tags})"
+              echo "Deleting ${package} version id ${version_id} digest ${version_name} (tags: ${version_tags})"
               gh api -X DELETE "${api_scope}/packages/container/${package_url}/versions/${version_id}"
               deleted=$((deleted + 1))
             fi
