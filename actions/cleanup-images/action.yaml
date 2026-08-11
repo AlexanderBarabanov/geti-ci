@@ -212,7 +212,9 @@ runs:
                 protected_sig_tags+=("sha256-${child_hex}.sig" "sha256-${child_hex}.att" "sha256-${child_hex}.sbom")
                 echo "    -> ${child}"
               done < <(printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
-              referrers="$(curl -fsSL -H "Authorization: Bearer ${reg_token}" \
+              # 404 is normal: GHCR returns it when cosign stores sigs as tags rather than OCI referrers.
+              referrers="$(curl -sSL 2>/dev/null \
+                -H "Authorization: Bearer ${reg_token}" \
                 -H "Accept: application/vnd.oci.image.index.v1+json" \
                 "https://ghcr.io/v2/${OWNER}/${package_url}/referrers/${digest}" || true)"
               while read -r child; do
