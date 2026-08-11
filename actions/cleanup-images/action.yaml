@@ -66,6 +66,9 @@ outputs:
   candidate-names:
     description: "Newline-separated list of version digests (sha256:...) that are deletion candidates"
     value: ${{ steps.cleanup.outputs.candidate_names }}
+  extra-retained-child-manifests:
+    description: "Newline-separated child manifest digests discovered under extra-retained-tags versions"
+    value: ${{ steps.cleanup.outputs.extra_retained_child_manifests }}
 
 runs:
   using: composite
@@ -111,6 +114,7 @@ runs:
         scanned_packages=0
         child_manifests_protected=0
         candidate_names=()
+        extra_retained_child_list=()
 
         owner_type="$(gh api "users/${OWNER}" --jq '.type')"
         if [[ "${owner_type}" == "Organization" ]]; then
@@ -202,12 +206,20 @@ runs:
               digest_tags="$(echo "${versions_json}" | jq -r --arg d "${digest}" '.[] | select(.name==$d) | .tags | join(", ")')"
               echo "  ${digest} (tags: ${digest_tags:-<none>})"
               [[ -n "${reg_token}" ]] || continue
+              # Detect whether this digest is retained via an extra-retained-tag (not release/RC/latest).
+              is_extra_retained="$(echo "${versions_json}" | jq -r \
+                --arg d "${digest}" \
+                --argjson extra_tags "${extra_tags_json}" \
+                'if ($extra_tags | length) == 0 then "false"
+                 else [.[] | select(.name==$d) | any(.tags[]?; . as $t | $extra_tags | index($t) != null)] | any | tostring
+                 end')"
               manifest="$(curl -fsSL -H "Authorization: Bearer ${reg_token}" -H "Accept: ${accept}" \
                 "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${digest}" || true)"
               while read -r child; do
                 [[ -n "${child}" ]] || continue
                 protected_digests+=("${child}")
                 child_manifests_protected=$((child_manifests_protected + 1))
+                [[ "${is_extra_retained}" == "true" ]] && extra_retained_child_list+=("${child}")
                 child_hex="${child#sha256:}"
                 protected_sig_tags+=("sha256-${child_hex}.sig" "sha256-${child_hex}.att" "sha256-${child_hex}.sbom")
                 echo "    -> ${child}"
@@ -291,6 +303,12 @@ runs:
               "$(printf '%s\n' "${candidate_names[@]}")"
           else
             printf 'candidate_names=\n'
+          fi
+          if [[ "${#extra_retained_child_list[@]}" -gt 0 ]]; then
+            printf 'extra_retained_child_manifests<<_EXTRA_EOF\n%s\n_EXTRA_EOF\n' \
+              "$(printf '%s\n' "${extra_retained_child_list[@]}")"
+          else
+            printf 'extra_retained_child_manifests=\n'
           fi
         } >> "${GITHUB_OUTPUT}"
 

@@ -137,54 +137,35 @@ jobs:
           extra-retained-tags: develop
           owner: open-edge-platform
 
-      - name: Verify child-manifests-protected is non-zero
-        shell: bash
-        env:
-          CHILD_MANIFESTS_PROTECTED: ${{ steps.cleanup.outputs.child-manifests-protected }}
-        run: |
-          if [[ -z "${CHILD_MANIFESTS_PROTECTED}" || "${CHILD_MANIFESTS_PROTECTED}" -lt 1 ]]; then
-            echo "Error: expected >=1 child manifest protected, got '${CHILD_MANIFESTS_PROTECTED}'"
-            echo "The 'develop' tag may be missing or the guard is not working."
-            exit 1
-          fi
-          echo "✅ Guard active: ${CHILD_MANIFESTS_PROTECTED} child manifest(s) protected from deletion"
-
-      - name: Independent verification - child manifests are not deletion candidates
+      - name: Verify develop child manifests match independent resolution and are not candidates
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           OWNER: open-edge-platform
           PACKAGE: geti-cpu
-          EXTRA_TAG: develop
+          DEVELOP_TAG: develop
+          ACTION_EXTRA_CHILD_MANIFESTS: ${{ steps.cleanup.outputs.extra-retained-child-manifests }}
           CANDIDATE_NAMES: ${{ steps.cleanup.outputs.candidate-names }}
         run: |
           set -euo pipefail
 
           package_url="$(printf '%s' "${PACKAGE}" | jq -sRr @uri)"
-          release_regex='^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$'
 
-          # Fetch all versions of geti-cpu.
+          # Resolve develop tag digest via the packages API.
           raw_versions="$(gh api --paginate \
             "orgs/${OWNER}/packages/container/${package_url}/versions?per_page=100")"
-          versions_json="$(printf '%s\n' "${raw_versions}" | jq -sc '
-            map(if type=="array" then .[] else . end) |
-            map({id, name, tags: (.metadata.container.tags // []), created_at})')"
+          develop_digest="$(printf '%s\n' "${raw_versions}" | jq -r \
+            --arg tag "${DEVELOP_TAG}" \
+            'map(if type=="array" then .[] else . end) | .[] |
+             select(any(.metadata.container.tags[]?; . == $tag)) | .name' | head -1)"
 
-          # Find retained digests (release/RC/latest + develop).
-          mapfile -t retained_digests < <(
-            echo "${versions_json}" | jq -r \
-              --arg re "${release_regex}" \
-              --arg extra "${EXTRA_TAG}" '.[]
-              | select(any(.tags[]?; test($re; "i") or . == "latest" or . == $extra))
-              | .name'
-          )
-
-          if [[ "${#retained_digests[@]}" -eq 0 ]]; then
-            echo "::warning::No retained images found for ${OWNER}/${PACKAGE}; skipping child manifest check."
-            exit 0
+          if [[ -z "${develop_digest}" ]]; then
+            echo "::error::develop tag not found in ${OWNER}/${PACKAGE}; cannot run deterministic guard test."
+            exit 1
           fi
+          echo "develop digest: ${develop_digest}"
 
-          # Obtain a GHCR registry token to resolve manifest children.
+          # Obtain a GHCR registry token.
           scope="$(printf 'repository:%s/%s:pull' "${OWNER}" "${PACKAGE}" | jq -sRr @uri)"
           reg_token="$(curl -fsSL -u "x:${GH_TOKEN}" \
             "https://ghcr.io/token?service=ghcr.io&scope=${scope}" \
@@ -196,47 +177,60 @@ jobs:
 
           accept='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json'
 
-          # Resolve child manifests referenced by all retained indices.
-          child_digests=()
-          for digest in "${retained_digests[@]}"; do
-            [[ -n "${digest}" ]] || continue
-            manifest="$(curl -fsSL \
-              -H "Authorization: Bearer ${reg_token}" \
-              -H "Accept: ${accept}" \
-              "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${digest}" || true)"
-            while read -r child; do
-              [[ -n "${child}" ]] || continue
-              child_digests+=("${child}")
-            done < <(printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
-          done
+          # Independently resolve child manifests of the develop index.
+          manifest="$(curl -fsSL \
+            -H "Authorization: Bearer ${reg_token}" \
+            -H "Accept: ${accept}" \
+            "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${develop_digest}")"
+          mapfile -t independent_children < <(
+            printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null | sort -u
+          )
 
-          if [[ "${#child_digests[@]}" -eq 0 ]]; then
-            echo "::warning::No child manifests found for retained images (single-arch package?); skipping guard check."
-            exit 0
+          if [[ "${#independent_children[@]}" -eq 0 ]]; then
+            echo "::error::No child manifests found for develop tag (single-arch image?); test is inconclusive."
+            exit 1
           fi
+          echo "Independently resolved child manifests of develop (${#independent_children[@]}):"
+          printf '  %s\n' "${independent_children[@]}"
 
-          echo "Child manifests of retained images found: ${#child_digests[@]}"
+          # Parse the action's extra-retained-child-manifests output and sort.
+          mapfile -t action_children < <(
+            printf '%s\n' "${ACTION_EXTRA_CHILD_MANIFESTS}" | grep -v '^$' | sort -u
+          )
 
-          # Build the set of candidate digests from the action's output.
-          mapfile -t candidate_digests <<< "${CANDIDATE_NAMES}"
+          if [[ "${#action_children[@]}" -eq 0 ]]; then
+            echo "::error::Action reported no child manifests for the develop tag (extra-retained-child-manifests is empty)."
+            exit 1
+          fi
+          echo "Action-reported child manifests of develop (${#action_children[@]}):"
+          printf '  %s\n' "${action_children[@]}"
 
-          # Verify no child manifest appears among the action's deletion candidates.
+          # The two lists must be identical.
+          action_sorted="$(printf '%s\n' "${action_children[@]}" | sort -u)"
+          independent_sorted="$(printf '%s\n' "${independent_children[@]}" | sort -u)"
+          if [[ "${action_sorted}" != "${independent_sorted}" ]]; then
+            echo "::error::Action and independently resolved child manifest lists differ:"
+            diff <(echo "${action_sorted}") <(echo "${independent_sorted}") || true
+            exit 1
+          fi
+          echo "✅ Lists match: action and independent resolution agree on ${#action_children[@]} child manifest(s)"
+
+          # None of the develop child manifests must appear in the deletion candidates.
+          mapfile -t candidate_digests < <(printf '%s\n' "${CANDIDATE_NAMES}" | grep -v '^$')
           failed=0
-          for child in "${child_digests[@]}"; do
+          for child in "${independent_children[@]}"; do
             for candidate in "${candidate_digests[@]}"; do
               if [[ "${child}" == "${candidate}" ]]; then
-                echo "ERROR: child manifest ${child} is listed as a deletion candidate!"
+                echo "ERROR: develop child manifest ${child} is a deletion candidate!"
                 failed=$((failed + 1))
               fi
             done
           done
-
           if [[ "${failed}" -gt 0 ]]; then
-            echo "❌ Guard check failed: ${failed} child manifest(s) of retained images are deletion candidates"
+            echo "❌ Guard check failed: ${failed} develop child manifest(s) are deletion candidates"
             exit 1
           fi
-
-          echo "✅ Guard verified: none of the ${#child_digests[@]} child manifests of retained images are deletion candidates"
+          echo "✅ Guard verified: none of the ${#independent_children[@]} develop child manifests are deletion candidates"
 
   # Summary job - provides single point of success/failure
   cleanup-images-test-summary:
