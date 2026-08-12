@@ -101,12 +101,11 @@ jobs:
           dry-run: true
 
       - name: Verify action failed on invalid input
+        if: always()
         shell: bash
-        env:
-          OUTCOME: ${{ steps.cleanup-invalid.outcome }}
         run: |
-          if [[ "$OUTCOME" != "failure" ]]; then
-            echo "Error: expected action to fail on invalid min-versions-to-keep, got outcome='$OUTCOME'"
+          if [[ "${{ steps.cleanup-invalid.outcome }}" != "failure" ]]; then
+            echo "Error: expected action to fail on invalid min-versions-to-keep, got outcome='${{ steps.cleanup-invalid.outcome }}'"
             exit 1
           fi
           echo "✅ Validation test passed (action failed as expected)"
@@ -231,6 +230,39 @@ jobs:
             exit 1
           fi
           echo "✅ Guard verified: none of the ${#independent_children[@]} develop child manifests are deletion candidates"
+
+          # Verify cosign signature/attestation versions for develop and its children are not candidates.
+          sig_versions=()
+          for d in "${develop_digest}" "${independent_children[@]}"; do
+            hex="${d#sha256:}"
+            for suffix in sig att sbom; do
+              sig_digest="$(printf '%s\n' "${raw_versions}" | jq -r \
+                --arg tag "sha256-${hex}.${suffix}" \
+                'map(if type=="array" then .[] else . end) | .[] |
+                 select(any(.metadata.container.tags[]?; . == $tag)) | .name' | head -1)"
+              [[ -n "${sig_digest}" ]] && sig_versions+=("${sig_digest}")
+            done
+          done
+
+          if [[ "${#sig_versions[@]}" -eq 0 ]]; then
+            echo "::warning::No cosign signature/attestation versions found for develop and its children; skipping signature guard check."
+          else
+            echo "Cosign signature/attestation versions found: ${#sig_versions[@]}"
+            failed_sigs=0
+            for sig_digest in "${sig_versions[@]}"; do
+              for candidate in "${candidate_digests[@]}"; do
+                if [[ "${sig_digest}" == "${candidate}" ]]; then
+                  echo "ERROR: cosign signature version ${sig_digest} is a deletion candidate!"
+                  failed_sigs=$((failed_sigs + 1))
+                fi
+              done
+            done
+            if [[ "${failed_sigs}" -gt 0 ]]; then
+              echo "❌ Cosign signature guard failed: ${failed_sigs} signature version(s) are deletion candidates"
+              exit 1
+            fi
+            echo "✅ Cosign guard verified: none of the ${#sig_versions[@]} signature/attestation versions are deletion candidates"
+          fi
 
   # Summary job - provides single point of success/failure
   cleanup-images-test-summary:
