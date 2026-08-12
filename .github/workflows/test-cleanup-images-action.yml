@@ -254,7 +254,6 @@ jobs:
           packages: geti-cpu
           min-versions-to-keep: 0
           dry-run: true
-          extra-retained-tags: develop
           owner: open-edge-platform
 
       - name: Verify cosign signature/attestation versions are not deletion candidates
@@ -263,7 +262,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           OWNER: open-edge-platform
           PACKAGE: geti-cpu
-          DEVELOP_TAG: develop
+          RELEASE_TAG: 3.0.0
           CANDIDATE_NAMES: ${{ steps.cleanup.outputs.candidate-names }}
         run: |
           set -euo pipefail
@@ -272,13 +271,13 @@ jobs:
 
           raw_versions="$(gh api --paginate \
             "orgs/${OWNER}/packages/container/${package_url}/versions?per_page=100")"
-          develop_digest="$(printf '%s\n' "${raw_versions}" | jq -r \
-            --arg tag "${DEVELOP_TAG}" \
+          release_digest="$(printf '%s\n' "${raw_versions}" | jq -r \
+            --arg tag "${RELEASE_TAG}" \
             'map(if type=="array" then .[] else . end) | .[] |
              select(any(.metadata.container.tags[]?; . == $tag)) | .name' | head -1)"
 
-          if [[ -z "${develop_digest}" ]]; then
-            echo "::error::develop tag not found in ${OWNER}/${PACKAGE}."
+          if [[ -z "${release_digest}" ]]; then
+            echo "::error::${RELEASE_TAG} tag not found in ${OWNER}/${PACKAGE}."
             exit 1
           fi
 
@@ -296,13 +295,13 @@ jobs:
           manifest="$(curl -fsSL \
             -H "Authorization: Bearer ${reg_token}" \
             -H "Accept: ${accept}" \
-            "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${develop_digest}")"
+            "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${release_digest}")"
           mapfile -t children < <(
             printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null | sort -u
           )
 
           sig_versions=()
-          for d in "${develop_digest}" "${children[@]:-}"; do
+          for d in "${release_digest}" "${children[@]:-}"; do
             [[ -n "${d}" ]] || continue
             hex="${d#sha256:}"
             for suffix in sig att sbom; do
@@ -315,7 +314,7 @@ jobs:
           done
 
           if [[ "${#sig_versions[@]}" -eq 0 ]]; then
-            echo "::error::No cosign signature/attestation versions found for develop and its children; the package must have cosign artifacts for this test to be meaningful."
+            echo "::error::No cosign signature/attestation versions found for ${RELEASE_TAG} and its children; the package must have cosign artifacts for this test to be meaningful."
             exit 1
           fi
 
