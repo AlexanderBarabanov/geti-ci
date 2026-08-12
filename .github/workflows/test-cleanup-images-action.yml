@@ -315,8 +315,8 @@ jobs:
           done
 
           if [[ "${#sig_versions[@]}" -eq 0 ]]; then
-            echo "::warning::No cosign signature/attestation versions found for develop and its children; skipping signature guard check."
-            exit 0
+            echo "::error::No cosign signature/attestation versions found for develop and its children; the package must have cosign artifacts for this test to be meaningful."
+            exit 1
           fi
 
           echo "Cosign signature/attestation versions found: ${#sig_versions[@]}"
