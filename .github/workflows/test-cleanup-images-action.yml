@@ -305,7 +305,10 @@ jobs:
           )
 
           # Collect sig versions for the OCI index and every child manifest via
-          # both storage mechanisms: tag-based (sha256-{hex}.sig) and OCI referrers.
+          # three discovery methods in order:
+          # 1. Tag-based (sha256-{hex}.sig/.att/.sbom) – cosign v1 / fallback.
+          # 2. OCI referrers API – cosign v2+ default on registries supporting it.
+          # 3. Manifest artifact-type inspection – cosign v3 embedded-bundle format.
           sig_versions=()
           for d in "${target_digest}" "${children[@]:-}"; do
             [[ -n "${d}" ]] || continue
@@ -326,8 +329,29 @@ jobs:
               | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
           done
 
+          # Method 3: inspect each child's manifest for cosign/sigstore artifact types.
+          if [[ "${#sig_versions[@]}" -eq 0 && "${#children[@]}" -gt 0 ]]; then
+            echo "Tag-based and referrers methods found nothing; inspecting child manifests..."
+            for child in "${children[@]}"; do
+              [[ -n "${child}" ]] || continue
+              child_manifest="$(curl -sSL 2>/dev/null \
+                -H "Authorization: Bearer ${reg_token}" \
+                -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+                "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${child}" || true)"
+              artifact_type="$(printf '%s' "${child_manifest}" | \
+                jq -r '.artifactType // .config.mediaType // empty' 2>/dev/null || true)"
+              echo "  ${child}: artifactType=${artifact_type:-<unknown>}"
+              if [[ "${artifact_type}" == *"cosign"* || "${artifact_type}" == *"sigstore"* ]]; then
+                sig_versions+=("${child}")
+                echo "  -> identified as cosign/sigstore artifact"
+              fi
+            done
+          fi
+
           if [[ "${#sig_versions[@]}" -eq 0 ]]; then
-            echo "::error::No cosign signature/attestation versions found for ${TARGET_TAG} via tag-based (sha256-*.sig) or OCI referrers. The image must be signed."
+            echo "::error::No cosign signature/attestation versions found for ${TARGET_TAG}."
+            echo "Tried: tag-based (sha256-*.sig), OCI referrers API, and child manifest artifact-type inspection."
+            echo "The image must be signed with a discoverable signature. Check cosign storage format."
             exit 1
           fi
 
