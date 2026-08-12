@@ -292,24 +292,39 @@ jobs:
             exit 1
           fi
 
-          # Collect sig versions via both storage mechanisms:
-          # tag-based (cosign v1 / fallback) and OCI referrers (cosign v2+ default).
-          sig_versions=()
-          hex="${target_digest#sha256:}"
-          for suffix in sig att sbom; do
-            sig_digest="$(printf '%s\n' "${raw_versions}" | jq -r \
-              --arg tag "sha256-${hex}.${suffix}" \
-              'map(if type=="array" then .[] else . end) | .[] |
-               select(any(.metadata.container.tags[]?; . == $tag)) | .name' | head -1)"
-            [[ -n "${sig_digest}" ]] && sig_versions+=("${sig_digest}")
-          done
-          while read -r ref_digest; do
-            [[ -n "${ref_digest}" ]] && sig_versions+=("${ref_digest}")
-          done < <(curl -sSL 2>/dev/null \
+          accept='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json'
+
+          # Resolve children of the target OCI index (crane resolves to platform
+          # manifest on linux/amd64; cosign signs that child, not the index).
+          manifest="$(curl -fsSL \
             -H "Authorization: Bearer ${reg_token}" \
-            -H "Accept: application/vnd.oci.image.index.v1+json" \
-            "https://ghcr.io/v2/${OWNER}/${package_url}/referrers/${target_digest}" \
-            | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
+            -H "Accept: ${accept}" \
+            "https://ghcr.io/v2/${OWNER}/${package_url}/manifests/${target_digest}")"
+          mapfile -t children < <(
+            printf '%s' "${manifest}" | jq -r '.manifests[]?.digest // empty' 2>/dev/null | sort -u
+          )
+
+          # Collect sig versions for the OCI index and every child manifest via
+          # both storage mechanisms: tag-based (sha256-{hex}.sig) and OCI referrers.
+          sig_versions=()
+          for d in "${target_digest}" "${children[@]:-}"; do
+            [[ -n "${d}" ]] || continue
+            hex="${d#sha256:}"
+            for suffix in sig att sbom; do
+              sig_digest="$(printf '%s\n' "${raw_versions}" | jq -r \
+                --arg tag "sha256-${hex}.${suffix}" \
+                'map(if type=="array" then .[] else . end) | .[] |
+                 select(any(.metadata.container.tags[]?; . == $tag)) | .name' | head -1)"
+              [[ -n "${sig_digest}" ]] && sig_versions+=("${sig_digest}")
+            done
+            while read -r ref_digest; do
+              [[ -n "${ref_digest}" ]] && sig_versions+=("${ref_digest}")
+            done < <(curl -sSL 2>/dev/null \
+              -H "Authorization: Bearer ${reg_token}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json" \
+              "https://ghcr.io/v2/${OWNER}/${package_url}/referrers/${d}" \
+              | jq -r '.manifests[]?.digest // empty' 2>/dev/null)
+          done
 
           if [[ "${#sig_versions[@]}" -eq 0 ]]; then
             echo "::error::No cosign signature/attestation versions found for ${TARGET_TAG} via tag-based (sha256-*.sig) or OCI referrers. The image must be signed."
