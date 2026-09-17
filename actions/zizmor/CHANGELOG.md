@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.2.0](https://github.com/AlexanderBarabanov/geti-ci/compare/zizmor/v0.1.5...zizmor/v0.2.0) (2026-09-17)
+
+
+### ✨ Features
+
+* add security actions ([#2](https://github.com/AlexanderBarabanov/geti-ci/issues/2)) ([db53350](https://github.com/AlexanderBarabanov/geti-ci/commit/db5335076dfe564b039b5a7480b8f6b6ae38370a))
+* add Zizmor action tagging and release process ([#52](https://github.com/AlexanderBarabanov/geti-ci/issues/52)) ([c9e3f76](https://github.com/AlexanderBarabanov/geti-ci/commit/c9e3f76ed0070ce1ccda73bedbe7b61bcd969aa1))
+* update bandit action ([#43](https://github.com/AlexanderBarabanov/geti-ci/issues/43)) ([cdb7239](https://github.com/AlexanderBarabanov/geti-ci/commit/cdb7239fe84ee55b8d3640fa6177da1ff3f97d02))
+* update zizmor action ([#38](https://github.com/AlexanderBarabanov/geti-ci/issues/38)) ([8d00cb6](https://github.com/AlexanderBarabanov/geti-ci/commit/8d00cb6adaaa0d6a44922183628a0155e4b99681))
+
+
+### 👷 CI/CD
+
+* initial setup ([#1](https://github.com/AlexanderBarabanov/geti-ci/issues/1)) ([38f1228](https://github.com/AlexanderBarabanov/geti-ci/commit/38f12282ae8a098e2616d1131fdbb69c7b42219e))
+
+
+### 🔧 Chores
+
+* **deps:** update dependency zizmorcore/zizmor to v1.16.3 ([#14](https://github.com/AlexanderBarabanov/geti-ci/issues/14)) ([b7d997c](https://github.com/AlexanderBarabanov/geti-ci/commit/b7d997c1651b1e1b99a280033bd268b55ccb7923))
+* **deps:** update dependency zizmorcore/zizmor to v1.18.0 ([#20](https://github.com/AlexanderBarabanov/geti-ci/issues/20)) ([9dd59af](https://github.com/AlexanderBarabanov/geti-ci/commit/9dd59af3aa2fddac4e1bf35e538269bdfb31a0df))
+* **deps:** update github actions ([#115](https://github.com/AlexanderBarabanov/geti-ci/issues/115)) ([c365802](https://github.com/AlexanderBarabanov/geti-ci/commit/c365802de200aa2da1077c2f015727c296e60c87))
+* **deps:** update github actions ([#22](https://github.com/AlexanderBarabanov/geti-ci/issues/22)) ([3cdaaaa](https://github.com/AlexanderBarabanov/geti-ci/commit/3cdaaaa0fc400b63f52f4dbb007fa0b69939e0ab))
+* **deps:** update github actions ([#42](https://github.com/AlexanderBarabanov/geti-ci/issues/42)) ([ca01b79](https://github.com/AlexanderBarabanov/geti-ci/commit/ca01b7972c23739fcb0f54649f6d8e92f5e64a06))
+* **deps:** update github actions ([#49](https://github.com/AlexanderBarabanov/geti-ci/issues/49)) ([5f0b729](https://github.com/AlexanderBarabanov/geti-ci/commit/5f0b7298de3165b0041fa1f0ac007da692d825ef))
+* **deps:** update github actions ([#55](https://github.com/AlexanderBarabanov/geti-ci/issues/55)) ([4d1f187](https://github.com/AlexanderBarabanov/geti-ci/commit/4d1f18739a708db400f42712a8c1b5c963eb5024))
+* **deps:** update github actions ([#61](https://github.com/AlexanderBarabanov/geti-ci/issues/61)) ([cc6fbe8](https://github.com/AlexanderBarabanov/geti-ci/commit/cc6fbe840db6ebd16ebd18d409f475bff5a8c182))
+* **deps:** update github actions ([#66](https://github.com/AlexanderBarabanov/geti-ci/issues/66)) ([c0157c2](https://github.com/AlexanderBarabanov/geti-ci/commit/c0157c29c577078f795d0b8c1fb03f63826dfce4))
+* **deps:** update github actions ([#67](https://github.com/AlexanderBarabanov/geti-ci/issues/67)) ([90a5d42](https://github.com/AlexanderBarabanov/geti-ci/commit/90a5d42c3cab01a95ab8f6bf22fd483bcfc5678b))
+* **deps:** update github actions ([#73](https://github.com/AlexanderBarabanov/geti-ci/issues/73)) ([3cd9754](https://github.com/AlexanderBarabanov/geti-ci/commit/3cd975446a3159a3e1238385fcd0ad61c6ef5fd8))
+* **deps:** update github actions ([#77](https://github.com/AlexanderBarabanov/geti-ci/issues/77)) ([c82012e](https://github.com/AlexanderBarabanov/geti-ci/commit/c82012e476eb99d7be3477bb3d54dcd25caa8bbf))
+* **deps:** update github actions ([#87](https://github.com/AlexanderBarabanov/geti-ci/issues/87)) ([8255114](https://github.com/AlexanderBarabanov/geti-ci/commit/82551141b905fdd4461a01bc18810b390b1eb6be))
+* **deps:** update github actions ([#95](https://github.com/AlexanderBarabanov/geti-ci/issues/95)) ([af5b359](https://github.com/AlexanderBarabanov/geti-ci/commit/af5b359e1be0087294225ec16f76385506298517))
+* **deps:** update tools ([#117](https://github.com/AlexanderBarabanov/geti-ci/issues/117)) ([1b357bc](https://github.com/AlexanderBarabanov/geti-ci/commit/1b357bcec41e6bbb393562fc3de86f45d3ab3042))
+* **deps:** update tools ([#48](https://github.com/AlexanderBarabanov/geti-ci/issues/48)) ([3a4b81e](https://github.com/AlexanderBarabanov/geti-ci/commit/3a4b81ea648711eb638b34757427cd3ef71d19f1))
+* **deps:** update tools ([#65](https://github.com/AlexanderBarabanov/geti-ci/issues/65)) ([7d25e47](https://github.com/AlexanderBarabanov/geti-ci/commit/7d25e47329bbfcde4ee51ab3581aea8613e245e2))
+* **deps:** update tools ([#76](https://github.com/AlexanderBarabanov/geti-ci/issues/76)) ([7ecfee0](https://github.com/AlexanderBarabanov/geti-ci/commit/7ecfee0dfded45a41b433911f6a1b19eaa4c3557))
+* **deps:** update tools ([#94](https://github.com/AlexanderBarabanov/geti-ci/issues/94)) ([b69929b](https://github.com/AlexanderBarabanov/geti-ci/commit/b69929b5ea7972cff2b7d1d274befd097b29a0a7))
+* **main:** release zizmor 0.1.0 ([#53](https://github.com/AlexanderBarabanov/geti-ci/issues/53)) ([4d46c7f](https://github.com/AlexanderBarabanov/geti-ci/commit/4d46c7fb444d8fae6390348e76d96bb0749c5632))
+* **main:** release zizmor 0.1.1 ([#56](https://github.com/AlexanderBarabanov/geti-ci/issues/56)) ([e80098b](https://github.com/AlexanderBarabanov/geti-ci/commit/e80098b3d180db37914f11ff6021f9fa34d0bb9f))
+* **main:** release zizmor 0.1.2 ([#69](https://github.com/AlexanderBarabanov/geti-ci/issues/69)) ([0bed754](https://github.com/AlexanderBarabanov/geti-ci/commit/0bed754fc7db24b5f9f15e7ead2eb4acdb0c7263))
+* **main:** release zizmor 0.1.3 ([#79](https://github.com/AlexanderBarabanov/geti-ci/issues/79)) ([844eabf](https://github.com/AlexanderBarabanov/geti-ci/commit/844eabfe27ce617aa1b2c0ca1b234d023c3ac7fb))
+* **main:** release zizmor 0.1.4 ([#96](https://github.com/AlexanderBarabanov/geti-ci/issues/96)) ([cffbec1](https://github.com/AlexanderBarabanov/geti-ci/commit/cffbec1b3b7c155efa789cd2ea67a2a765a4369f))
+* **main:** release zizmor 0.1.5 ([#116](https://github.com/AlexanderBarabanov/geti-ci/issues/116)) ([27a17d7](https://github.com/AlexanderBarabanov/geti-ci/commit/27a17d738348699840c32f98edc9947f21278154))
+
 ## [0.1.5](https://github.com/open-edge-platform/geti-ci/compare/zizmor/v0.1.4...zizmor/v0.1.5) (2026-09-01)
 
 
