@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.2.0](https://github.com/AlexanderBarabanov/geti-ci/compare/bandit/v0.1.3...bandit/v0.2.0) (2026-09-17)
+
+
+### ✨ Features
+
+* add security actions ([#2](https://github.com/AlexanderBarabanov/geti-ci/issues/2)) ([db53350](https://github.com/AlexanderBarabanov/geti-ci/commit/db5335076dfe564b039b5a7480b8f6b6ae38370a))
+* update bandit action ([#43](https://github.com/AlexanderBarabanov/geti-ci/issues/43)) ([cdb7239](https://github.com/AlexanderBarabanov/geti-ci/commit/cdb7239fe84ee55b8d3640fa6177da1ff3f97d02))
+
+
+### 🔧 Chores
+
+* **deps:** update dependency bandit to v1.8.6 ([#11](https://github.com/AlexanderBarabanov/geti-ci/issues/11)) ([135849b](https://github.com/AlexanderBarabanov/geti-ci/commit/135849bcd72c94145a2777b52d15b56d1a1443c8))
+* **deps:** update dependency bandit to v1.9.2 ([#18](https://github.com/AlexanderBarabanov/geti-ci/issues/18)) ([6de5a5e](https://github.com/AlexanderBarabanov/geti-ci/commit/6de5a5e0fd7fa42dcf48ab89eb55bf340385deb4))
+* **deps:** update github actions ([#115](https://github.com/AlexanderBarabanov/geti-ci/issues/115)) ([c365802](https://github.com/AlexanderBarabanov/geti-ci/commit/c365802de200aa2da1077c2f015727c296e60c87))
+* **deps:** update github actions ([#22](https://github.com/AlexanderBarabanov/geti-ci/issues/22)) ([3cdaaaa](https://github.com/AlexanderBarabanov/geti-ci/commit/3cdaaaa0fc400b63f52f4dbb007fa0b69939e0ab))
+* **deps:** update github actions ([#42](https://github.com/AlexanderBarabanov/geti-ci/issues/42)) ([ca01b79](https://github.com/AlexanderBarabanov/geti-ci/commit/ca01b7972c23739fcb0f54649f6d8e92f5e64a06))
+* **deps:** update github actions ([#49](https://github.com/AlexanderBarabanov/geti-ci/issues/49)) ([5f0b729](https://github.com/AlexanderBarabanov/geti-ci/commit/5f0b7298de3165b0041fa1f0ac007da692d825ef))
+* **deps:** update github actions ([#55](https://github.com/AlexanderBarabanov/geti-ci/issues/55)) ([4d1f187](https://github.com/AlexanderBarabanov/geti-ci/commit/4d1f18739a708db400f42712a8c1b5c963eb5024))
+* **deps:** update github actions ([#61](https://github.com/AlexanderBarabanov/geti-ci/issues/61)) ([cc6fbe8](https://github.com/AlexanderBarabanov/geti-ci/commit/cc6fbe840db6ebd16ebd18d409f475bff5a8c182))
+* **deps:** update github actions ([#66](https://github.com/AlexanderBarabanov/geti-ci/issues/66)) ([c0157c2](https://github.com/AlexanderBarabanov/geti-ci/commit/c0157c29c577078f795d0b8c1fb03f63826dfce4))
+* **deps:** update github actions ([#67](https://github.com/AlexanderBarabanov/geti-ci/issues/67)) ([90a5d42](https://github.com/AlexanderBarabanov/geti-ci/commit/90a5d42c3cab01a95ab8f6bf22fd483bcfc5678b))
+* **deps:** update github actions ([#73](https://github.com/AlexanderBarabanov/geti-ci/issues/73)) ([3cd9754](https://github.com/AlexanderBarabanov/geti-ci/commit/3cd975446a3159a3e1238385fcd0ad61c6ef5fd8))
+* **deps:** update github actions ([#77](https://github.com/AlexanderBarabanov/geti-ci/issues/77)) ([c82012e](https://github.com/AlexanderBarabanov/geti-ci/commit/c82012e476eb99d7be3477bb3d54dcd25caa8bbf))
+* **deps:** update github actions ([#81](https://github.com/AlexanderBarabanov/geti-ci/issues/81)) ([b1fbb80](https://github.com/AlexanderBarabanov/geti-ci/commit/b1fbb802e0fde92c827b176a201426d76473bb44))
+* **deps:** update github actions ([#87](https://github.com/AlexanderBarabanov/geti-ci/issues/87)) ([8255114](https://github.com/AlexanderBarabanov/geti-ci/commit/82551141b905fdd4461a01bc18810b390b1eb6be))
+* **deps:** update github actions ([#95](https://github.com/AlexanderBarabanov/geti-ci/issues/95)) ([af5b359](https://github.com/AlexanderBarabanov/geti-ci/commit/af5b359e1be0087294225ec16f76385506298517))
+* **deps:** update tools ([#48](https://github.com/AlexanderBarabanov/geti-ci/issues/48)) ([3a4b81e](https://github.com/AlexanderBarabanov/geti-ci/commit/3a4b81ea648711eb638b34757427cd3ef71d19f1))
+* **deps:** update tools ([#54](https://github.com/AlexanderBarabanov/geti-ci/issues/54)) ([9b1ef60](https://github.com/AlexanderBarabanov/geti-ci/commit/9b1ef60a8b2b802da428621e192c322960f4b3d5))
+* **main:** release bandit 0.1.0 ([#64](https://github.com/AlexanderBarabanov/geti-ci/issues/64)) ([d5b1283](https://github.com/AlexanderBarabanov/geti-ci/commit/d5b1283a2618b816cfce50d597754e8b8ea3a2b6))
+* **main:** release bandit 0.1.1 ([#70](https://github.com/AlexanderBarabanov/geti-ci/issues/70)) ([940b101](https://github.com/AlexanderBarabanov/geti-ci/commit/940b10164d8c2a6a6e4d786fe1c0aeab74bd629d))
+* **main:** release bandit 0.1.2 ([#78](https://github.com/AlexanderBarabanov/geti-ci/issues/78)) ([134a7e6](https://github.com/AlexanderBarabanov/geti-ci/commit/134a7e6b1658ea9eb97b7f52f724ed88a2878ea7))
+* **main:** release bandit 0.1.3 ([#98](https://github.com/AlexanderBarabanov/geti-ci/issues/98)) ([b9abdfc](https://github.com/AlexanderBarabanov/geti-ci/commit/b9abdfc0ecbe989816a7f2cf582af771f9abbb87))
+
 ## [0.1.3](https://github.com/open-edge-platform/geti-ci/compare/bandit/v0.1.2...bandit/v0.1.3) (2026-09-01)
 
 
